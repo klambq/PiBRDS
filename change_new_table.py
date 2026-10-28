@@ -36,8 +36,8 @@ def main():
                 "forecast_FW",
             ]
             data[numeric_columns] = data[numeric_columns].astype(float)
-            data["pv_error"] = data["forecast_PV"] - data["actual_PV"]
-            data["wi_error"] = data["forecast_FW"] - data["actual_FW"]
+            data["PV_error"] = data["forecast_PV"] - data["actual_PV"]
+            data["FW_error"] = data["forecast_FW"] - data["actual_FW"]
 
             data.to_sql(
                 TABLE_NAME,
