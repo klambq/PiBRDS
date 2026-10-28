@@ -12,7 +12,7 @@ def import_csv(
     table,
     prepare,
     chunksize=1000,
-    progress_every=1000,
+    progress_every=10000,
 ):
     statement = insert(table)
     statement = statement.on_duplicate_key_update(
