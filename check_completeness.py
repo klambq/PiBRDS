@@ -4,26 +4,18 @@ from connect_db import get_engine
 
 
 QUERY = text("""
-    WITH ordered_data AS (
+    SELECT *
+    FROM (
         SELECT
             dtime_utc,
-            LAG(dtime_utc) OVER (ORDER BY dtime_utc) AS previous_dtime_utc
+            TIMESTAMPDIFF(
+                MINUTE,
+                LAG(dtime_utc) OVER (ORDER BY dtime_utc),
+                dtime_utc
+            ) AS diff
         FROM pse_actual
-    )
-    SELECT
-        previous_dtime_utc,
-        dtime_utc,
-        TIMESTAMPDIFF(
-            MINUTE,
-            previous_dtime_utc,
-            dtime_utc
-        ) AS gap_minutes
-    FROM ordered_data
-    WHERE TIMESTAMPDIFF(
-        MINUTE,
-        previous_dtime_utc,
-        dtime_utcx1
-    ) != 15
+    ) AS data
+    WHERE diff != 15
 """)
 
 
