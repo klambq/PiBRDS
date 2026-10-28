@@ -11,6 +11,7 @@ def main():
     engine = get_engine()
 
     try:
+        metadata.drop_all(engine)
         metadata.create_all(engine)
 
         actual_count = import_csv(
