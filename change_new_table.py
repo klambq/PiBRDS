@@ -6,7 +6,7 @@ from models import pse_actual, pse_forecast_pkd
 
 
 TABLE_NAME = "pse_actual_vs_forecast"
-BATCH_SIZE = 1000
+BATCH_SIZE = 5000
 
 
 def main():
