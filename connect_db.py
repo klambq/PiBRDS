@@ -1,36 +1,45 @@
-import pymysql
-from dotenv import load_dotenv
 import os
-import logging
 
-logger = logging.getLogger(__name__)
+from dotenv import load_dotenv
+from sqlalchemy import URL, create_engine, text
 
 
-def connect_to_db():
-    load_dotenv()
-    host = os.getenv("host")
-    port = int(os.getenv("port"))
-    user = os.getenv("user")
-    password = os.getenv("password")
-    connection = pymysql.connect(
-        host=host,
-        port=port,
-        user=user,
-        password=password,
+load_dotenv()
+
+
+def get_engine():
+    required_variables = ("host", "user", "password", "DATABASE_NAME")
+    missing_variables = [
+        variable
+        for variable in required_variables
+        if not os.getenv(variable)
+    ]
+
+    if missing_variables:
+        missing = ", ".join(missing_variables)
+        raise ValueError(f"Brakuje zmiennych w pliku .env: {missing}")
+
+    url = URL.create(
+        drivername="mysql+pymysql",
+        username=os.getenv("user"),
+        password=os.getenv("password"),
+        host=os.getenv("host"),
+        port=int(os.getenv("port", "3306")),
+        database=os.getenv("DATABASE_NAME"),
     )
-    logger.info("Connected to the database")
-    return connection
+
+    return create_engine(url, pool_pre_ping=True)
+
+
+def main():
+    engine = get_engine()
+
+    with engine.connect() as connection:
+        result = connection.scalar(text("SELECT 2 + 2"))
+        print(f"Test polaczenia: 2 + 2 = {result}")
+
+    engine.dispose()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    connection = None
-    try:
-        connection = connect_to_db()
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 2+2;")
-            logger.info(f"test: {cursor.fetchone()}")
-    finally:
-        if connection is not None:
-            connection.close()
-            logger.info("connection closed")
+    main()

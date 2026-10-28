@@ -1,61 +1,38 @@
-import os
+from sqlalchemy import inspect, text
 
-from dotenv import load_dotenv
-
-from connect_db import connect_to_db
-
-
-load_dotenv()
-
-DATABASE_NAME = os.getenv("DATABASE_NAME")
-
-if not DATABASE_NAME:
-    raise ValueError("Brakuje DATABASE_NAME w pliku .env")
+from connect_db import get_engine
+from models import pse_actual
 
 
-def create_table(connection):
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS pse_actual (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                business_date DATE NOT NULL,
-                dtime DATETIME NOT NULL,
-                dtime_utc DATETIME NOT NULL,
-                period VARCHAR(13) NOT NULL,
-                period_utc VARCHAR(13) NOT NULL,
+def migrate_dst_columns(engine):
+    columns = {
+        column["name"]: column["type"]
+        for column in inspect(engine).get_columns(pse_actual.name)
+    }
 
-                demand DECIMAL(10, 3) NOT NULL,
-                swm_p DECIMAL(10, 3) NOT NULL,
-                swm_np DECIMAL(10, 3) NOT NULL,
-                jg DECIMAL(10, 3) NOT NULL,
-                jgw1 DECIMAL(10, 3) NOT NULL,
-                jgm1 DECIMAL(10, 3) NOT NULL,
-                jnwrb DECIMAL(10, 3) NOT NULL,
-                jgm DECIMAL(10, 3) NOT NULL,
-                wi DECIMAL(10, 3) NOT NULL,
-                pv DECIMAL(10, 3) NOT NULL,
+    dtime_length = getattr(columns["dtime"], "length", None)
+    period_length = getattr(columns["period"], "length", None)
 
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_pse_actual_dtime_utc (dtime_utc)
-            );
-        """)
+    if dtime_length == 20 and period_length == 15:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(text("""
+            ALTER TABLE pse_actual
+                MODIFY COLUMN dtime VARCHAR(20) NOT NULL,
+                MODIFY COLUMN period VARCHAR(15) NOT NULL
+        """))
 
 
 def main():
-    connection = connect_to_db()
+    engine = get_engine()
 
     try:
-        connection.select_db(DATABASE_NAME)
-        create_table(connection)
-        connection.commit()
-        print(f"Tabela  została utworzona w bazie.")
-
-    except Exception:
-        connection.rollback()
-        raise
-
+        pse_actual.create(engine, checkfirst=True)
+        migrate_dst_columns(engine)
+        print("Tabela `pse_actual` jest gotowa.")
     finally:
-        connection.close()
+        engine.dispose()
 
 
 if __name__ == "__main__":
