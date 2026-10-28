@@ -2,6 +2,10 @@ import pandas as pd
 from sqlalchemy.dialects.mysql import insert
 
 
+def utc_datetime(values):
+    return pd.to_datetime(values, utc=True).dt.tz_localize(None)
+
+
 def import_csv(engine, csv_path, table, prepare, chunksize=1000):
     statement = insert(table)
     statement = statement.on_duplicate_key_update(
