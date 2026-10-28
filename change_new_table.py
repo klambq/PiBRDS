@@ -16,8 +16,8 @@ def main():
             select(
                 pse_actual.c.dtime_utc,
                 pse_actual.c.business_date,
-                pse_actual.c.pv.label("actual_pv"),
-                pse_actual.c.wi.label("actual_wi"),
+                pse_actual.c.pv.label("actual_PV"),
+                pse_actual.c.wi.label("actual_FW"),
             ),
             engine,
         )
@@ -25,22 +25,22 @@ def main():
             select(
                 pse_forecast_pkd.c.dtime_utc,
                 pse_forecast_pkd.c.publication_ts_utc,
-                pse_forecast_pkd.c.gen_fv.label("forecast_pv"),
-                pse_forecast_pkd.c.gen_wi.label("forecast_wi"),
+                pse_forecast_pkd.c.gen_fv.label("forecast_PV"),
+                pse_forecast_pkd.c.gen_wi.label("forecast_FW"),
             ),
             engine,
         )
 
         data = actual.merge(forecast, on="dtime_utc")
         numeric_columns = [
-            "actual_pv",
-            "actual_wi",
-            "forecast_pv",
-            "forecast_wi",
+            "actual_PV",
+            "actual_FW",
+            "forecast_PV",
+            "forecast_FW",
         ]
         data[numeric_columns] = data[numeric_columns].astype(float)
-        data["pv_error"] = data["forecast_pv"] - data["actual_pv"]
-        data["wi_error"] = data["forecast_wi"] - data["actual_wi"]
+        data["pv_error"] = data["forecast_PV"] - data["actual_PV"]
+        data["wi_error"] = data["forecast_FW"] - data["actual_FW"]
 
         data.to_sql(
             TABLE_NAME,
