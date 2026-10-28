@@ -1,44 +1,23 @@
-import csv
-from datetime import datetime, timezone
+import pandas as pd
+from sqlalchemy.dialects.mysql import insert
 
 
-def parse_utc_datetime(value):
-    parsed = datetime.fromisoformat(value)
-
-    if parsed.tzinfo is None:
-        return parsed
-
-    return parsed.astimezone(timezone.utc).replace(tzinfo=None)
-
-
-def import_csv_in_batches(
-    engine,
-    csv_path,
-    parse_row,
-    statement,
-    batch_size=1000,
-):
-    if not csv_path.is_file():
-        raise FileNotFoundError(f"Nie znaleziono pliku: {csv_path}")
+def import_csv(engine, csv_path, table, prepare, chunksize=1000):
+    statement = insert(table)
+    statement = statement.on_duplicate_key_update(
+        **{
+            column.name: statement.inserted[column.name]
+            for column in table.columns
+            if not column.primary_key
+        }
+    )
 
     processed = 0
-    batch = []
 
-    with csv_path.open("r", encoding="utf-8-sig", newline="") as csv_file:
-        reader = csv.DictReader(csv_file)
-
-        with engine.begin() as connection:
-            for row in reader:
-                batch.append(parse_row(row))
-
-                if len(batch) == batch_size:
-                    connection.execute(statement, batch)
-                    processed += len(batch)
-                    print(f"Przetworzono: {processed}")
-                    batch.clear()
-
-            if batch:
-                connection.execute(statement, batch)
-                processed += len(batch)
+    with engine.begin() as connection:
+        for chunk in pd.read_csv(csv_path, chunksize=chunksize):
+            chunk = prepare(chunk)
+            connection.execute(statement, chunk.to_dict("records"))
+            processed += len(chunk)
 
     return processed
